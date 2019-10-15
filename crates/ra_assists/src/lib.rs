@@ -92,6 +92,7 @@ mod assists {
     mod add_derive;
     mod add_explicit_type;
     mod add_impl;
+    mod add_custom_impl;
     mod apply_demorgan;
     mod flip_comma;
     mod flip_binexpr;
@@ -114,6 +115,7 @@ mod assists {
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
             add_impl::add_impl,
+            add_custom_impl::add_custom_impl,
             apply_demorgan::apply_demorgan,
             change_visibility::change_visibility,
             fill_match_arms::fill_match_arms,

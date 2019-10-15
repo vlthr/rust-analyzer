@@ -12,6 +12,8 @@ itertools = "0.8.0"
 arrayvec = "0.4.10"
 rustc-hash = "1.0.1"
 rustc_lexer = "0.1.0"
+text_unit = "0.1.6"
+smol_str = "0.1.12"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }

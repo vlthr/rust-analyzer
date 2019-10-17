@@ -1,14 +1,14 @@
 //! FIXME: write short doc here
 
+use crate::{Assist, AssistCtx, AssistId};
 use hir::db::HirDatabase;
+use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::{IDENT, WHITESPACE}
+    SyntaxKind::{IDENT, WHITESPACE},
 };
-use text_unit::{TextUnit, TextRange};
-use join_to_string::join;
 use smol_str::SmolStr;
-use crate::{Assist, AssistCtx, AssistId};
+use text_unit::{TextRange, TextUnit};
 
 const DERIVE_TRAIT: &'static str = "derive";
 
@@ -16,7 +16,9 @@ pub(crate) fn add_custom_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let input = ctx.node_at_offset::<ast::AttrInput>()?;
     let attr = input.syntax().parent().and_then(ast::Attr::cast)?;
 
-    let attr_name = attr.syntax().descendants_with_tokens()
+    let attr_name = attr
+        .syntax()
+        .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
         .find_map(|i| i.into_token())?
         .text()
@@ -29,18 +31,21 @@ pub(crate) fn add_custom_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let trait_token = ctx.token_at_offset().next().filter(|t| t.kind() == IDENT)?;
     let annotated = attr.syntax().next_sibling()?;
     let annotated_name = annotated.text().to_string();
-    let start_offset  = annotated.parent()?.text_range().end();
+    let start_offset = annotated.parent()?.text_range().end();
 
     ctx.add_action(AssistId("add_custom_impl"), "add custom impl", |edit| {
         edit.target(attr.syntax().text_range());
 
-        let new_attr_input = input.syntax().descendants_with_tokens()
+        let new_attr_input = input
+            .syntax()
+            .descendants_with_tokens()
             .filter(|t| t.kind() == IDENT)
             .filter_map(|t| t.into_token().map(|t| t.text().clone()))
             .filter(|t| t != trait_token.text())
             .collect::<Vec<SmolStr>>();
         let has_more_derives = new_attr_input.len() > 0;
-        let new_attr_input = join(new_attr_input.iter()).separator(", ").surround_with("(", ")").to_string();
+        let new_attr_input =
+            join(new_attr_input.iter()).separator(", ").surround_with("(", ")").to_string();
         let new_attr_input_len = new_attr_input.len();
 
         let mut buf = String::new();
@@ -57,7 +62,9 @@ pub(crate) fn add_custom_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
             let attr_range = attr.syntax().text_range();
             edit.delete(attr_range);
 
-            let line_break_range = attr.syntax().next_sibling_or_token()
+            let line_break_range = attr
+                .syntax()
+                .next_sibling_or_token()
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
                 .unwrap_or(TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
@@ -97,7 +104,7 @@ struct Foo {
 impl Debug for Foo {
 <|>
 }
-            "
+            ",
         )
     }
 
@@ -116,7 +123,7 @@ struct Foo {}
 impl Debug for Foo {
 <|>
 }
-            "
+            ",
         )
     }
 

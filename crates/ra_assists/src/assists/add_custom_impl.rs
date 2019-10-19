@@ -5,10 +5,10 @@ use hir::db::HirDatabase;
 use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode},
+    Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
+    TextRange, TextUnit,
 };
-use smol_str::SmolStr;
-use text_unit::{TextRange, TextUnit};
 
 const DERIVE_TRAIT: &'static str = "derive";
 
@@ -20,18 +20,17 @@ pub(crate) fn add_custom_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         .syntax()
         .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
-        .find_map(|i| i.into_token())?
+        .find_map(|i| i.into_token())
+        .filter(|t| *t.text() != DERIVE_TRAIT)?
         .text()
         .clone();
 
-    if attr_name != DERIVE_TRAIT {
-        return None;
-    }
+    let trait_token =
+        ctx.token_at_offset().filter(|t| t.kind() == IDENT && *t.text() != attr_name).next()?;
 
-    let trait_token = ctx.token_at_offset().next().filter(|t| t.kind() == IDENT)?;
-    let annotated = attr.syntax().next_sibling()?;
-    let annotated_name = annotated.text().to_string();
-    let start_offset = annotated.parent()?.text_range().end();
+    let annotated = attr.syntax().siblings(Direction::Next).find_map(|s| ast::Name::cast(s))?;
+    let annotated_name = annotated.syntax().text().to_string();
+    let start_offset = annotated.syntax().parent()?.text_range().end();
 
     ctx.add_action(AssistId("add_custom_impl"), "add custom impl", |edit| {
         edit.target(attr.syntax().text_range());
@@ -91,13 +90,35 @@ mod tests {
         check_assist(
             add_custom_impl,
             "
-#[derive(Debug<|>)]
+#[derive(Debu<|>g)]
 struct Foo {
     bar: String,
 }
             ",
             "
 struct Foo {
+    bar: String,
+}
+
+impl Debug for Foo {
+<|>
+}
+            ",
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_for_with_visibility_modifier() {
+        check_assist(
+            add_custom_impl,
+            "
+#[derive(Debug<|>)]
+pub struct Foo {
+    bar: String,
+}
+            ",
+            "
+pub struct Foo {
     bar: String,
 }
 
@@ -133,6 +154,25 @@ impl Debug for Foo {
             add_custom_impl,
             "
 #[derive(<|>)]
+struct Foo {}
+            ",
+        )
+    }
+
+    #[test]
+    fn test_ignore_if_cursor_on_param() {
+        check_assist_not_applicable(
+            add_custom_impl,
+            "
+#[derive<|>(Debug)]
+struct Foo {}
+            ",
+        );
+
+        check_assist_not_applicable(
+            add_custom_impl,
+            "
+#[derive(Debug)<|>]
 struct Foo {}
             ",
         )

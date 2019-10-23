@@ -166,6 +166,22 @@ impl Foo for S {
 }
 ```
 
+- Add custom `impl` for derived trait
+
+```rust
+// before:
+#[derive(De<|>bug, Display)]
+struct S;
+
+// after:
+#[derive(Display)]
+struct S;
+
+impl Debug for S {
+<|>
+}
+```
+
 - Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws)
 
 ```rust
